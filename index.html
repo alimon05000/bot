@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ChatBot App">
+    <link rel="apple-touch-icon" href="https://via.placeholder.com/180?text=Icon">
+    <link rel="manifest" href="/manifest.json">
+    <title>ChatBot PWA</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #chat-container {
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 1s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            max-width: 80%;
+            margin-bottom: 15px;
+            padding: 12px 18px;
+            border-radius: 20px;
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .user-message {
+            align-self: flex-end;
+            background: #007bff;
+            color: white;
+        }
+        .bot-message {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        #chat-input {
+            display: flex;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        #input-field {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            outline: none;
+        }
+        #send-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin-left: 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        #send-button:hover {
+            background: #0056b3;
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            margin: 0 4px;
+            animation: bounce 1.2s infinite;
+        }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-messages"></div>
+        <div id="chat-input">
+            <input type="text" id="input-field" placeholder="Введите сообщение...">
+            <button id="send-button">Отправить</button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const inputField = document.getElementById('input-field');
+        const sendButton = document.getElementById('send-button');
+
+        // Service Worker для PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('Service Worker registered'))
+                .catch(err => console.error('Service Worker registration failed:', err));
+        }
+
+        // Простая логика бота: ключевые слова и случайные ответы для имитации 90% покрытия
+        const botResponses = {
+            default: [
+                "Интересная мысль! Расскажите подробнее.",
+                "Хм, не уверен, но давайте обсудим.",
+                "Круто! Что вы думаете об этом?",
+                "Я думаю, это зависит от контекста.",
+                "Расскажите, почему вы спросили?"
+            ],
+            hello: ["Привет! Как дела?", "Здравствуйте! Чем могу помочь?", "Йо! Что новенького?"],
+            bye: ["Пока! Было приятно общаться.", "До свидания! Возвращайтесь скорее.", "Увидимся!"],
+            weather: ["Сегодня солнечно! А у вас?", "Погода переменчивая, как настроение.", "Лучше проверьте в приложении погоды."],
+            joke: ["Почему программисты путают Хэллоуин и Рождество? Потому что Oct 31 == Dec 25!", "Шутка: Я пытался поймать туман, но промахнулся."],
+            name: ["Меня зовут ChatBot, а вас?", "Я ИИ-бот, созданный для разговоров."],
+            help: ["Я могу разговаривать на разные темы! Спросите что угодно.", "Нужна помощь? Просто скажите."],
+            // Добавьте больше ключевых слов для большего покрытия
+            love: ["Любовь - это прекрасно! Расскажите о своей.", "Ах, любовь... Вечная тема."],
+            food: ["Люблю пиццу! А вы что предпочитаете?", "Еда - это жизнь. Что готовите?"],
+            music: ["Какая ваша любимая песня?", "Музыка лечит душу."],
+            sport: ["Футбол или баскетбол? Я за активный отдых.", "Спорт - ключ к здоровью."],
+            travel: ["Куда бы вы хотели поехать?", "Путешествия расширяют кругозор."],
+            work: ["Работа важна, но отдых тоже.", "Расскажите о своей работе."],
+            hobby: ["Какое у вас хобби?", "У меня хобби - болтать с людьми!"],
+            ai: ["Я ИИ, но с душой.", "ИИ изменит мир!"],
+            // И так далее, чтобы охватить много тем
+        };
+
+        function addMessage(text, isUser) {
+            const message = document.createElement('div');
+            message.classList.add('message', isUser ? 'user-message' : 'bot-message');
+            message.textContent = text;
+            chatMessages.appendChild(message);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTyping() {
+            const typing = document.createElement('div');
+            typing.classList.add('bot-message', 'typing-indicator');
+            typing.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+            chatMessages.appendChild(typing);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return typing;
+        }
+
+        function getBotResponse(userInput) {
+            const lowerInput = userInput.toLowerCase();
+            if (lowerInput.includes('привет') || lowerInput.includes('hello')) return botResponses.hello[Math.floor(Math.random() * botResponses.hello.length)];
+            if (lowerInput.includes('пока') || lowerInput.includes('bye')) return botResponses.bye[Math.floor(Math.random() * botResponses.bye.length)];
+            if (lowerInput.includes('погода') || lowerInput.includes('weather')) return botResponses.weather[Math.floor(Math.random() * botResponses.weather.length)];
+            if (lowerInput.includes('шутка') || lowerInput.includes('joke')) return botResponses.joke[Math.floor(Math.random() * botResponses.joke.length)];
+            if (lowerInput.includes('имя') || lowerInput.includes('name')) return botResponses.name[Math.floor(Math.random() * botResponses.name.length)];
+            if (lowerInput.includes('помощь') || lowerInput.includes('help')) return botResponses.help[Math.floor(Math.random() * botResponses.help.length)];
+            if (lowerInput.includes('любовь') || lowerInput.includes('love')) return botResponses.love[Math.floor(Math.random() * botResponses.love.length)];
+            if (lowerInput.includes('еда') || lowerInput.includes('food')) return botResponses.food[Math.floor(Math.random() * botResponses.food.length)];
+            if (lowerInput.includes('музыка') || lowerInput.includes('music')) return botResponses.music[Math.floor(Math.random() * botResponses.music.length)];
+            if (lowerInput.includes('спорт') || lowerInput.includes('sport')) return botResponses.sport[Math.floor(Math.random() * botResponses.sport.length)];
+            if (lowerInput.includes('путешествие') || lowerInput.includes('travel')) return botResponses.travel[Math.floor(Math.random() * botResponses.travel.length)];
+            if (lowerInput.includes('работа') || lowerInput.includes('work')) return botResponses.work[Math.floor(Math.random() * botResponses.work.length)];
+            if (lowerInput.includes('хобби') || lowerInput.includes('hobby')) return botResponses.hobby[Math.floor(Math.random() * botResponses.hobby.length)];
+            if (lowerInput.includes('ии') || lowerInput.includes('ai')) return botResponses.ai[Math.floor(Math.random() * botResponses.ai.length)];
+            // Для остальных - случайный дефолт
+            return botResponses.default[Math.floor(Math.random() * botResponses.default.length)];
+        }
+
+        sendButton.addEventListener('click', () => {
+            const userInput = inputField.value.trim();
+            if (!userInput) return;
+            addMessage(userInput, true);
+            inputField.value = '';
+            const typing = showTyping();
+            setTimeout(() => {
+                chatMessages.removeChild(typing);
+                const response = getBotResponse(userInput);
+                addMessage(response, false);
+            }, 1500); // Имитация思考
+        });
+
+        inputField.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendButton.click();
+        });
+
+        // Начальное сообщение
+        addMessage("Привет! Я ChatBot. Давайте поговорим?", false);
+    </script>
+</body>
+</html>
