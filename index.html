@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="UltraAIChat">
+    <meta name="apple-mobile-web-app-title" content="МегаЧат">
     <link rel="apple-touch-icon" href="https://via.placeholder.com/180?text=Icon">
     <link rel="manifest" href="/manifest.json">
-    <title>UltraAIChat PWA</title>
+    <title>МегаЧат PWA</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
     <style>
         body {
@@ -20,18 +20,32 @@
             height: 100vh;
             overflow: hidden;
             display: flex;
+            position: relative;
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        #overlay.active {
+            display: block;
         }
         #sidebar {
-            width: 250px;
+            width: 280px;
             height: 100vh;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
             position: fixed;
-            left: -250px;
+            left: -280px;
             top: 0;
             transition: left 0.3s ease;
             padding: 20px;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
             z-index: 1000;
         }
         #sidebar.open {
@@ -44,42 +58,48 @@
             margin-bottom: 20px;
         }
         #new-chat {
-            background: #007bff;
+            background: linear-gradient(45deg, #007bff, #00c4ff);
             border: none;
             padding: 10px 15px;
             border-radius: 10px;
             color: white;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: transform 0.2s;
         }
         #new-chat:hover {
-            background: #0056b3;
+            transform: scale(1.05);
         }
         #chat-list {
             overflow-y: auto;
             flex: 1;
         }
         .chat-item {
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 8px;
             margin-bottom: 10px;
             cursor: pointer;
             transition: background 0.3s;
         }
         .chat-item:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.25);
         }
         #menu-toggle {
             position: fixed;
             top: 20px;
             left: 20px;
-            background: none;
+            background: rgba(255, 255, 255, 0.1);
             border: none;
             color: white;
             font-size: 24px;
             cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
             z-index: 1001;
+            transition: transform 0.2s;
+        }
+        #menu-toggle:hover {
+            transform: scale(1.1);
         }
         #chat-container {
             width: 100%;
@@ -92,7 +112,7 @@
             flex-direction: column;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
             margin: 0 auto;
-            transition: margin-left 0.3s ease;
+            animation: fadeIn 0.5s ease-in-out;
         }
         @media (min-width: 768px) {
             #chat-container {
@@ -111,7 +131,6 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            animation: fadeIn 0.5s ease-in-out;
         }
         .message {
             max-width: 75%;
@@ -205,6 +224,7 @@
     </style>
 </head>
 <body>
+    <div id="overlay"></div>
     <button id="menu-toggle">☰</button>
     <div id="sidebar">
         <div id="sidebar-header">
@@ -230,6 +250,7 @@
         const sendButton = document.getElementById('send-button');
         const suggestionsDiv = document.getElementById('suggestions');
         const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
         const menuToggle = document.getElementById('menu-toggle');
         const newChatButton = document.getElementById('new-chat');
         const chatList = document.getElementById('chat-list');
@@ -237,8 +258,8 @@
         // Service Worker для PWA
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log('Service Worker registered'))
-                .catch(err => console.error('Service Worker registration failed:', err));
+                .then(() => console.log('Service Worker зарегистрирован'))
+                .catch(err => console.error('Ошибка регистрации Service Worker:', err));
         }
 
         // Управление чатами
@@ -256,6 +277,8 @@
             currentChatId = id;
             chatMessages.innerHTML = chats[id] || '';
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
         }
 
         function updateChatList() {
@@ -263,12 +286,8 @@
             Object.keys(chats).forEach(id => {
                 const chatItem = document.createElement('div');
                 chatItem.classList.add('chat-item');
-                chatItem.textContent = `Чат ${id}`;
-                chatItem.addEventListener('click', () => {
-                    loadChat(id);
-                    sidebar.classList.remove('open');
-                    document.getElementById('chat-container').style.marginLeft = '0';
-                });
+                chatItem.textContent = `Чат ${id.slice(-4)}`;
+                chatItem.addEventListener('click', () => loadChat(id));
                 chatList.appendChild(chatItem);
             });
         }
@@ -279,13 +298,16 @@
             localStorage.setItem('chats', JSON.stringify(chats));
             loadChat(newId);
             updateChatList();
-            sidebar.classList.remove('open');
-            document.getElementById('chat-container').style.marginLeft = '0';
         });
 
         menuToggle.addEventListener('click', () => {
             sidebar.classList.toggle('open');
-            document.getElementById('chat-container').style.marginLeft = sidebar.classList.contains('open') ? '250px' : '0';
+            overlay.classList.toggle('active');
+        });
+
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
         });
 
         // Начальная загрузка чата
@@ -302,12 +324,12 @@
         // Расширенная база ответов
         const botResponses = {
             default: [
-                "Хм, интересный вопрос! Давай разберемся.",
+                "Хм, интересная мысль! Давай разберемся.",
                 "Ого, это что-то новенькое! Расскажи подробнее.",
                 "Не совсем понял, но звучит круто. Что ты имеешь в виду?",
-                "Давай обсудим это! Что тебя вдохновило?",
-                "Хорошая тема! Что еще можешь сказать?",
-                "Звучит интригующе, продолжай!"
+                "Классная тема! Что еще можешь сказать?",
+                "Звучит интригующе, продолжай!",
+                "Давай копнем глубже, что ты думаешь?"
             ],
             hello: ["Привет! Рад тебя видеть, что нового?", "Здорово, что ты тут! Как дела?", "Йо, привет! Чем займемся?", "Привет-привет! Что на уме?", "Рад встрече, давай поболтаем!"],
             bye: ["Пока, было классно болтать!", "До скорого, возвращайся!", "Увидимся, не пропадай!", "Хорошего дня, до встречи!", "Пока-пока, держи хвост пистолетом!"],
@@ -318,7 +340,7 @@
                 "Почему Wi-Fi роутер грустил? Никто не подключался!",
                 "Как называется медведь без ушей? Просто Б!"
             ],
-            name: ["Я UltraAIChat, твой умный друг! А ты кто?", "Зови меня просто AI, а тебя как?", "Я твой виртуальный помощник, приятно познакомиться!"],
+            name: ["Я МегаЧат, твой умный друг! А ты кто?", "Зови меня просто AI, а тебя как?", "Я твой виртуальный помощник, приятно познакомиться!"],
             help: ["Я тут, чтобы отвечать на вопросы, шутить и даже считать! Что хочешь?", "Спроси что угодно, я готов!", "Нужна помощь? Я мастер на все руки!"],
             love: ["Любовь — это как код, главное найти баг!", "Романтика в воздухе, расскажи свою историю!", "Любовь — это когда два сердца в дебаге."],
             food: ["Пицца или борщ? Что любишь?", "Еда — это любовь! Что сегодня на столе?", "Суши или стейк? Делись вкусом!"],
@@ -344,30 +366,45 @@
             space: ["Космос манит! Что думаешь о Марсе?", "Звезды — это мечты!", "Слышал про черные дыры?"],
             philosophy: ["Философия — это про смысл жизни. Что думаешь?", "Быть или не быть, вот в чем вопрос!", "Кто мы в этом мире?"],
             culture: ["Культура — это мосты между людьми!", "Какие традиции тебе нравятся?", "Праздники — это кайф!"],
+            weather_specific: ["Погода зависит от места! Назови город, уточню.", "Солнечно или пасмурно? Где ты сейчас?", "Погода влияет на настроение, правда?"],
+            time: ["Время летит! Хочешь знать точное время?", "Сейчас утро, день или ночь у тебя?", "Время — самый ценный ресурс!"],
+            advice: ["Нужен совет? Расскажи, что волнует!", "Мой совет: делай, что любишь!", "Иногда просто стоит выдохнуть."],
         };
 
-        // T9-подобная система автодополнения
-        const suggestionDict = [
-            "привет", "погода", "шутка", "имя", "помощь", "любовь", "еда", "музыка", "спорт", "путешествие",
-            "работа", "хобби", "ии", "политика", "наука", "история", "фильм", "книга", "здоровье", "технологии",
-            "экология", "образование", "математика", "новости", "игры", "искусство", "космос", "философия", "культура"
-        ];
-
-        function updateSuggestions(input) {
+        // T9 с API Datamuse
+        async function updateSuggestions(input) {
             suggestionsDiv.innerHTML = '';
             if (!input) return;
-            const filtered = suggestionDict.filter(word => word.startsWith(input.toLowerCase())).slice(0, 5);
-            filtered.forEach(word => {
-                const suggestion = document.createElement('div');
-                suggestion.classList.add('suggestion');
-                suggestion.textContent = word;
-                suggestion.addEventListener('click', () => {
-                    inputField.value = word;
-                    suggestionsDiv.innerHTML = '';
-                    sendButton.click();
+            try {
+                const response = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(input)}*`);
+                const data = await response.json();
+                const filtered = data.map(item => item.word).slice(0, 5);
+                filtered.forEach(word => {
+                    const suggestion = document.createElement('div');
+                    suggestion.classList.add('suggestion');
+                    suggestion.textContent = word;
+                    suggestion.addEventListener('click', () => {
+                        inputField.value = word;
+                        suggestionsDiv.innerHTML = '';
+                        sendButton.click();
+                    });
+                    suggestionsDiv.appendChild(suggestion);
                 });
-                suggestionsDiv.appendChild(suggestion);
-            });
+            } catch (error) {
+                console.error('Ошибка Datamuse API:', error);
+                const localSuggestions = botResponses.default.concat(...Object.values(botResponses)).filter(word => word.toLowerCase().startsWith(input.toLowerCase())).slice(0, 5);
+                localSuggestions.forEach(word => {
+                    const suggestion = document.createElement('div');
+                    suggestion.classList.add('suggestion');
+                    suggestion.textContent = word;
+                    suggestion.addEventListener('click', () => {
+                        inputField.value = word;
+                        suggestionsDiv.innerHTML = '';
+                        sendButton.click();
+                    });
+                    suggestionsDiv.appendChild(suggestion);
+                });
+            }
         }
 
         function addMessage(text, isUser) {
@@ -388,65 +425,77 @@
             return typing;
         }
 
+        // Определение намерения: диалог или информационный запрос
+        function isInformationalQuery(input) {
+            const informationalKeywords = ['кто', 'что', 'где', 'когда', 'почему', 'как', 'сколько', 'какой', 'какая', 'какое', 'кто такой', 'что такое', 'расскажи про', 'объясни'];
+            return informationalKeywords.some(keyword => input.toLowerCase().includes(keyword)) || input.match(/[0-9+\-*/^()]/);
+        }
+
         async function getBotResponse(userInput) {
             const lowerInput = userInput.toLowerCase();
             let key = 'default';
 
             // Расширенная проверка ключевых слов
-            if (lowerInput.includes('привет') || lowerInput.includes('hello') || lowerInput.includes('здравствуй')) key = 'hello';
-            else if (lowerInput.includes('пока') || lowerInput.includes('bye') || lowerInput.includes('до свидания')) key = 'bye';
-            else if (lowerInput.includes('погода') || lowerInput.includes('weather')) key = 'weather';
-            else if (lowerInput.includes('шутка') || lowerInput.includes('joke') || lowerInput.includes('анекдот')) key = 'joke';
-            else if (lowerInput.includes('имя') || lowerInput.includes('name') || lowerInput.includes('кто ты')) key = 'name';
-            else if (lowerInput.includes('помощь') || lowerInput.includes('help') || lowerInput.includes('что ты умеешь')) key = 'help';
-            else if (lowerInput.includes('любовь') || lowerInput.includes('love') || lowerInput.includes('романтика')) key = 'love';
-            else if (lowerInput.includes('еда') || lowerInput.includes('food') || lowerInput.includes('рецепт')) key = 'food';
-            else if (lowerInput.includes('музыка') || lowerInput.includes('music') || lowerInput.includes('песня')) key = 'music';
-            else if (lowerInput.includes('спорт') || lowerInput.includes('sport') || lowerInput.includes('фитнес')) key = 'sport';
-            else if (lowerInput.includes('путешествие') || lowerInput.includes('travel') || lowerInput.includes('отпуск')) key = 'travel';
-            else if (lowerInput.includes('работа') || lowerInput.includes('work') || lowerInput.includes('карьера')) key = 'work';
-            else if (lowerInput.includes('хобби') || lowerInput.includes('hobby') || lowerInput.includes('увлечение')) key = 'hobby';
-            else if (lowerInput.includes('ии') || lowerInput.includes('ai') || lowerInput.includes('искусственный интеллект')) key = 'ai';
-            else if (lowerInput.includes('политика') || lowerInput.includes('politics') || lowerInput.includes('выборы')) key = 'politics';
-            else if (lowerInput.includes('наука') || lowerInput.includes('science') || lowerInput.includes('физика')) key = 'science';
-            else if (lowerInput.includes('история') || lowerInput.includes('history') || lowerInput.includes('прошлое')) key = 'history';
-            else if (lowerInput.includes('фильм') || lowerInput.includes('movies') || lowerInput.includes('кино')) key = 'movies';
-            else if (lowerInput.includes('книга') || lowerInput.includes('books') || lowerInput.includes('литература')) key = 'books';
-            else if (lowerInput.includes('здоровье') || lowerInput.includes('health') || lowerInput.includes('медицина')) key = 'health';
-            else if (lowerInput.includes('технологии') || lowerInput.includes('tech') || lowerInput.includes('гаджеты')) key = 'tech';
-            else if (lowerInput.includes('экология') || lowerInput.includes('environment') || lowerInput.includes('природа')) key = 'environment';
-            else if (lowerInput.includes('образование') || lowerInput.includes('education') || lowerInput.includes('учеба')) key = 'education';
-            else if (lowerInput.includes('математика') || lowerInput.includes('math') || lowerInput.match(/[0-9+\-*/^()]/)) key = 'math';
-            else if (lowerInput.includes('новости') || lowerInput.includes('news')) key = 'news';
-            else if (lowerInput.includes('игры') || lowerInput.includes('games') || lowerInput.includes('игра')) key = 'games';
-            else if (lowerInput.includes('искусство') || lowerInput.includes('art') || lowerInput.includes('художник')) key = 'art';
-            else if (lowerInput.includes('космос') || lowerInput.includes('space') || lowerInput.includes('планеты')) key = 'space';
-            else if (lowerInput.includes('философия') || lowerInput.includes('philosophy') || lowerInput.includes('смысл жизни')) key = 'philosophy';
-            else if (lowerInput.includes('культура') || lowerInput.includes('culture') || lowerInput.includes('традиции')) key = 'culture';
+            if (lowerInput.includes('привет') || lowerInput.includes('здравствуй') || lowerInput.includes('добрый')) key = 'hello';
+            else if (lowerInput.includes('пока') || lowerInput.includes('до свидания') || lowerInput.includes('прощай')) key = 'bye';
+            else if (lowerInput.includes('погода') && lowerInput.includes('в ')) key = 'weather_specific';
+            else if (lowerInput.includes('погода')) key = 'weather';
+            else if (lowerInput.includes('шутка') || lowerInput.includes('анекдот')) key = 'joke';
+            else if (lowerInput.includes('имя') || lowerInput.includes('кто ты')) key = 'name';
+            else if (lowerInput.includes('помощь') || lowerInput.includes('что ты умеешь')) key = 'help';
+            else if (lowerInput.includes('любовь') || lowerInput.includes('романтика')) key = 'love';
+            else if (lowerInput.includes('еда') || lowerInput.includes('рецепт') || lowerInput.includes('кухня')) key = 'food';
+            else if (lowerInput.includes('музыка') || lowerInput.includes('песня')) key = 'music';
+            else if (lowerInput.includes('спорт') || lowerInput.includes('фитнес')) key = 'sport';
+            else if (lowerInput.includes('путешествие') || lowerInput.includes('отпуск') || lowerInput.includes('поездка')) key = 'travel';
+            else if (lowerInput.includes('работа') || lowerInput.includes('карьера') || lowerInput.includes('профессия')) key = 'work';
+            else if (lowerInput.includes('хобби') || lowerInput.includes('увлечение')) key = 'hobby';
+            else if (lowerInput.includes('ии') || lowerInput.includes('искусственный интеллект')) key = 'ai';
+            else if (lowerInput.includes('политика') || lowerInput.includes('выборы')) key = 'politics';
+            else if (lowerInput.includes('наука') || lowerInput.includes('физика') || lowerInput.includes('биология')) key = 'science';
+            else if (lowerInput.includes('история') || lowerInput.includes('прошлое')) key = 'history';
+            else if (lowerInput.includes('фильм') || lowerInput.includes('кино')) key = 'movies';
+            else if (lowerInput.includes('книга') || lowerInput.includes('литература')) key = 'books';
+            else if (lowerInput.includes('здоровье') || lowerInput.includes('медицина')) key = 'health';
+            else if (lowerInput.includes('технологии') || lowerInput.includes('гаджеты')) key = 'tech';
+            else if (lowerInput.includes('экология') || lowerInput.includes('природа')) key = 'environment';
+            else if (lowerInput.includes('образование') || lowerInput.includes('учеба')) key = 'education';
+            else if (lowerInput.includes('математика') || lowerInput.match(/[0-9+\-*/^()]/)) key = 'math';
+            else if (lowerInput.includes('новости')) key = 'news';
+            else if (lowerInput.includes('игры') || lowerInput.includes('игра')) key = 'games';
+            else if (lowerInput.includes('искусство') || lowerInput.includes('художник')) key = 'art';
+            else if (lowerInput.includes('космос') || lowerInput.includes('планеты') || lowerInput.includes('звезды')) key = 'space';
+            else if (lowerInput.includes('философия') || lowerInput.includes('смысл жизни')) key = 'philosophy';
+            else if (lowerInput.includes('культура') || lowerInput.includes('традиции')) key = 'culture';
+            else if (lowerInput.includes('время') || lowerInput.includes('сейчас')) key = 'time';
+            else if (lowerInput.includes('совет') || lowerInput.includes('посоветуй')) key = 'advice';
 
             // Обработка математических задач
             if (key === 'math' || lowerInput.match(/[0-9+\-*/^()]/)) {
                 try {
                     const result = math.evaluate(userInput);
-                    return `Решил твою задачу: ${result}`;
+                    return `Вот твой ответ: ${result}`;
                 } catch (error) {
-                    return "Не получилось решить. Проверь выражение, может, где-то ошибка?";
+                    return "Не смог решить. Проверь выражение, может, ошибка где-то закралась?";
                 }
             }
 
-            // Ответ из локальной базы
-            if (key !== 'default') {
+            // Диалоговые запросы (не информационные)
+            if (!isInformationalQuery(userInput) && key !== 'default') {
                 return botResponses[key][Math.floor(Math.random() * botResponses[key].length)];
             }
 
-            // Поиск через DuckDuckGo Instant Answer API
+            // Информационные запросы через API
             try {
-                const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(userInput)}&format=json&no_html=1`);
-                const data = await response.json();
-                if (data.AbstractText) {
-                    return data.AbstractText;
-                } else if (data.RelatedTopics && data.RelatedTopics.length > 0) {
-                    return data.RelatedTopics[0].Text;
+                // Сначала пробуем DuckDuckGo Instant Answer API
+                const duckResponse = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(userInput)}&format=json&no_html=1`);
+                const duckData = await duckResponse.json();
+                if (duckData.AbstractText) {
+                    const text = duckData.AbstractText;
+                    return text.length > 200 ? text.substring(0, 200).split('. ').slice(0, -1).join('. ') + '.' : text;
+                } else if (duckData.RelatedTopics && duckData.RelatedTopics.length > 0) {
+                    const text = duckData.RelatedTopics[0].Text;
+                    return text.length > 200 ? text.substring(0, 200).split('. ').slice(0, -1).join('. ') + '.' : text;
                 }
             } catch (error) {
                 console.error('Ошибка DuckDuckGo API:', error);
@@ -454,11 +503,11 @@
 
             // Fallback на Wikipedia API
             try {
-                const response = await fetch(`https://ru.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(userInput)}&origin=*`);
-                const data = await response.json();
-                if (data.query.search.length > 0) {
-                    const snippet = data.query.search[0].snippet.replace(/<[^>]+>/g, '');
-                    return snippet.length > 100 ? snippet.substring(0, 100) + '...' : snippet;
+                const wikiResponse = await fetch(`https://ru.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(userInput)}&origin=*`);
+                const wikiData = await wikiResponse.json();
+                if (wikiData.query.search.length > 0) {
+                    const text = wikiData.query.search[0].snippet.replace(/<[^>]+>/g, '');
+                    return text.length > 200 ? text.substring(0, 200).split('. ').slice(0, -1).join('. ') + '.' : text;
                 }
             } catch (error) {
                 console.error('Ошибка Wikipedia API:', error);
@@ -492,7 +541,7 @@
         });
 
         // Начальное сообщение
-        addMessage("Привет! Я UltraAIChat, твой умный собеседник. Могу болтать, считать, искать инфу и шутить. Что хочешь обсудить?", false);
+        addMessage("Привет! Я МегаЧат, твой умный собеседник. Могу болтать, решать задачи, искать ответы и шутить. Что хочешь обсудить?", false);
     </script>
 </body>
 </html>
