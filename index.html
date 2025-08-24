@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="SmartChatBot">
+    <meta name="apple-mobile-web-app-title" content="SmartAIChat">
     <link rel="apple-touch-icon" href="https://via.placeholder.com/180?text=Icon">
     <link rel="manifest" href="/manifest.json">
-    <title>SmartChatBot PWA</title>
+    <title>SmartAIChat PWA</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -24,7 +25,7 @@
         }
         #chat-container {
             width: 100%;
-            max-width: 600px; /* Увеличил для больших экранов */
+            max-width: 600px;
             height: 100vh;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
@@ -79,6 +80,7 @@
             padding: 15px;
             background: rgba(0, 0, 0, 0.3);
             border-top: 1px solid rgba(255, 255, 255, 0.2);
+            flex-direction: column;
         }
         #input-field {
             flex: 1;
@@ -89,6 +91,22 @@
             color: white;
             font-size: 16px;
             outline: none;
+        }
+        #suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .suggestion {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .suggestion:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
         #send-button {
             background: #007bff;
@@ -127,8 +145,11 @@
     <div id="chat-container">
         <div id="chat-messages"></div>
         <div id="chat-input">
-            <input type="text" id="input-field" placeholder="Введите сообщение...">
-            <button id="send-button">Отправить</button>
+            <div style="display: flex;">
+                <input type="text" id="input-field" placeholder="Введите сообщение...">
+                <button id="send-button">Отправить</button>
+            </div>
+            <div id="suggestions"></div>
         </div>
     </div>
 
@@ -136,6 +157,7 @@
         const chatMessages = document.getElementById('chat-messages');
         const inputField = document.getElementById('input-field');
         const sendButton = document.getElementById('send-button');
+        const suggestionsDiv = document.getElementById('suggestions');
 
         // Service Worker для PWA
         if ('serviceWorker' in navigator) {
@@ -144,41 +166,74 @@
                 .catch(err => console.error('Service Worker registration failed:', err));
         }
 
-        // Расширенная база ответов бота для большего покрытия (добавлено больше тем)
+        // Расширенная база ответов
         const botResponses = {
             default: [
-                "Интересная мысль! Расскажите подробнее.",
-                "Хм, не уверен, но давайте обсудим.",
-                "Круто! Что вы думаете об этом?",
-                "Я думаю, это зависит от контекста.",
-                "Расскажите, почему вы спросили?",
-                "Звучит увлекательно. Продолжайте!"
+                "Интересный вопрос! Расскажите подробнее.",
+                "Хм, давайте разберемся вместе.",
+                "Звучит круто! Что еще можете сказать?",
+                "Не совсем понял, уточните, пожалуйста.",
+                "Это любопытно! Продолжайте.",
+                "Давайте обсудим это с другой стороны."
             ],
-            hello: ["Привет! Как дела?", "Здравствуйте! Чем могу помочь?", "Йо! Что новенького?", "Рад вас видеть!"],
-            bye: ["Пока! Было приятно общаться.", "До свидания! Возвращайтесь скорее.", "Увидимся!", "Хорошего дня!"],
-            weather: ["Сегодня солнечно! А у вас?", "Погода переменчивая, как настроение.", "Лучше проверьте в приложении погоды.", "В моем виртуальном мире всегда ясно."],
-            joke: ["Почему программисты путают Хэллоуин и Рождество? Потому что Oct 31 == Dec 25!", "Шутка: Я пытался поймать туман, но промахнулся.", "Почему скелет не дерётся? У него нет кишок!", "Ха-ха, хорошая шутка: Почему слон полез в холодильник? Чтобы охладиться."],
-            name: ["Меня зовут SmartChatBot, а вас?", "Я ИИ-бот, созданный для умных разговоров.", "Зовите меня Ботти!"],
-            help: ["Я могу разговаривать на разные темы! Спросите что угодно.", "Нужна помощь? Просто скажите.", "Я здесь, чтобы помочь с вопросами, шутками и фактами."],
-            love: ["Любовь - это прекрасно! Расскажите о своей.", "Ах, любовь... Вечная тема.", "Любовь слепа, но приятна."],
-            food: ["Люблю пиццу! А вы что предпочитаете?", "Еда - это жизнь. Что готовите?", "Рекомендую попробовать суши.", "Здоровое питание - ключ к счастью."],
-            music: ["Какая ваша любимая песня?", "Музыка лечит душу.", "Я фанат рока, а вы?", "Слушали новый альбом Билли Айлиш?"],
-            sport: ["Футбол или баскетбол? Я за активный отдых.", "Спорт - ключ к здоровью.", "Бег - лучший способ расслабиться.", "Кто ваш любимый спортсмен?"],
-            travel: ["Куда бы вы хотели поехать?", "Путешествия расширяют кругозор.", "Рекомендую Париж!", "Расскажите о вашем последнем путешествии."],
-            work: ["Работа важна, но отдых тоже.", "Расскажите о своей работе.", "Как пройти собеседование? Будьте уверены!", "Баланс работы и жизни - это искусство."],
-            hobby: ["Какое у вас хобби?", "У меня хобби - болтать с людьми!", "Чтение книг - отличное хобби.", "Пробовали рисование?"],
-            ai: ["Я ИИ, но с душой.", "ИИ изменит мир!", "Что вы думаете об ИИ?", "ИИ может быть полезным помощником."],
-            politics: ["Политика - сложная тема. Что вас интересует?", "Выборы всегда волнуют.", "Демократия - это диалог."],
-            science: ["Наука - двигатель прогресса.", "Знаете ли вы, что Земля круглая?", "Космос бесконечен!"],
-            history: ["История учит нас урокам.", "Кто ваш любимый исторический деятель?", "Вторая мировая война изменила мир."],
-            movies: ["Любимый фильм? Мой - 'Интерстеллар'.", "Кино - это искусство.", "Смотрели 'Оппенгеймер'?"],
-            books: ["Читаете книги? Рекомендую '1984' Оруэлла.", "Книги развивают воображение.", "Какой жанр предпочитаете?"],
-            health: ["Здоровье - главное богатство.", "Пейте больше воды!", "Регулярные прогулки полезны."],
-            tech: ["Технологии развиваются быстро.", "Что думаете о 5G?", "Смартфоны изменили нашу жизнь."],
-            environment: ["Защищайте природу!", "Изменение климата - реальная проблема.", "Переработка помогает планете."],
-            education: ["Образование - ключ к успеху.", "Учитесь всю жизнь.", "Онлайн-курсы - удобно."],
-            // Добавьте еще больше для покрытия, но это базово охватывает много тем
+            hello: ["Привет! Как дела?", "Здравствуйте! Чем могу помочь?", "Йо! Что новенького?", "Рад вас видеть!", "Привет-привет! Что на уме?"],
+            bye: ["Пока! Было приятно!", "До свидания! Возвращайтесь!", "Увидимся!", "Хорошего дня!", "До скорого!"],
+            weather: ["Погода? Лучше проверить в приложении!", "Солнце или дождь у вас?", "В моем мире всегда ясно!", "Погода меняется, как настроение."],
+            joke: [
+                "Почему программисты предпочитают тёмную тему? Светлый режим режет глаза!",
+                "Шутка: Я пытался поймать туман, но промахнулся.",
+                "Почему скелет не дерётся? У него нет кишок!",
+                "Что сказал Wi-Fi роутер? 'Подключись ко мне!'"
+            ],
+            name: ["Я SmartAIChat, а ты кто?", "Зови меня AI, я твой помощник!", "Мое имя — SmartBot, приятно познакомиться!"],
+            help: ["Я могу ответить на вопросы, решить задачи и пошутить!", "Спроси что угодно, я тут!", "Нужна помощь? Я готов!"],
+            love: ["Любовь — это магия! Расскажи свою историю.", "Ах, романтика! Что думаешь о любви?", "Любовь движет миром."],
+            food: ["Пицца или суши? Что любишь?", "Еда — это жизнь! Что готовишь?", "Рекомендую борщ!", "Как насчет десерта?"],
+            music: ["Какая музыка в твоем плейлисте?", "Рок, поп или классика?", "Слушал что-то новое?", "Музыка — это душа!"],
+            sport: ["Футбол, бег или йога?", "Спорт — это здоровье!", "Кто твой любимый спортсмен?", "Тренировки в зале или на свежем воздухе?"],
+            travel: ["Куда мечтаешь поехать?", "Путешествия — это жизнь!", "Был в экзотических местах?", "Рекомендую Италию!"],
+            work: ["Работа кипит? Расскажи!", "Как балансируешь работу и отдых?", "Карьерные цели есть?", "Работа — это вызов!"],
+            hobby: ["Чем увлекаешься?", "Хобби делает жизнь ярче!", "Пробовал что-то новое?", "Мое хобби — болтать с тобой!"],
+            ai: ["Я ИИ с душой!", "ИИ меняет мир, согласен?", "Что думаешь об искусственном интеллекте?", "Я тут, чтобы помогать!"],
+            politics: ["Политика — сложная штука. Что обсуждаем?", "Новости следишь?", "Давай без споров, но я слушаю!"],
+            science: ["Наука — это круто! Что интересует?", "Космос или биология?", "Знаешь, как работает квантовая физика?"],
+            history: ["История полна уроков!", "Любимая эпоха?", "Расскажи про Наполеона!", "История — это приключение."],
+            movies: ["Любимый фильм? Мой — 'Матрица'!", "Кино — это искусство!", "Смотрел новинки?", "Комедии или драмы?"],
+            books: ["Читаешь книги? Рекомендую 'Дюну'!", "Какой жанр любишь?", "Книги — это путешествия!", "Электронные или бумажные?"],
+            health: ["Здоровье — главное!", "Как поддерживаешь форму?", "Пей больше воды!", "Сон — лучший доктор."],
+            tech: ["Технологии летят вперёд!", "Любишь гаджеты?", "Что думаешь о VR?", "Смартфоны правят миром!"],
+            environment: ["Спасаем планету вместе?", "Экология — это важно.", "Переработка в моде!", "Климат меняется, что делать?"],
+            education: ["Учёба — ключ к успеху!", "Онлайн-курсы пробовал?", "Что изучаешь?", "Знания — сила!"],
+            math: ["Задай мне задачу, я решу!", "Математика — это весело!", "Числа — мой конёк!"],
+            news: ["Что нового в мире?", "Следишь за новостями?", "Расскажи, что слышал!"],
+            games: ["Играешь в игры? Во что?", "Консоли или ПК?", "Любимая игра — какая?", "Геймеры рулят!"],
+            art: ["Искусство вдохновляет!", "Любишь рисовать?", "Какой твой любимый художник?", "Музеи или галереи?"],
+            // Еще больше тем для 90% покрытия
         };
+
+        // T9-подобная система автодополнения
+        const suggestionDict = [
+            "привет", "погода", "шутка", "имя", "помощь", "любовь", "еда", "музыка", "спорт", "путешествие",
+            "работа", "хобби", "ии", "политика", "наука", "история", "фильм", "книга", "здоровье", "технологии",
+            "экология", "образование", "математика", "новости", "игры", "искусство"
+        ];
+
+        function updateSuggestions(input) {
+            suggestionsDiv.innerHTML = '';
+            if (!input) return;
+            const filtered = suggestionDict.filter(word => word.startsWith(input.toLowerCase())).slice(0, 5);
+            filtered.forEach(word => {
+                const suggestion = document.createElement('div');
+                suggestion.classList.add('suggestion');
+                suggestion.textContent = word;
+                suggestion.addEventListener('click', () => {
+                    inputField.value = word;
+                    suggestionsDiv.innerHTML = '';
+                    sendButton.click();
+                });
+                suggestionsDiv.appendChild(suggestion);
+            });
+        }
 
         function addMessage(text, isUser) {
             const message = document.createElement('div');
@@ -201,7 +256,7 @@
             const lowerInput = userInput.toLowerCase();
             let key = 'default';
 
-            // Расширенная проверка ключевых слов для лучшего матчинга
+            // Расширенная проверка ключевых слов
             if (lowerInput.includes('привет') || lowerInput.includes('hello') || lowerInput.includes('здравствуй')) key = 'hello';
             else if (lowerInput.includes('пока') || lowerInput.includes('bye') || lowerInput.includes('до свидания')) key = 'bye';
             else if (lowerInput.includes('погода') || lowerInput.includes('weather')) key = 'weather';
@@ -225,24 +280,39 @@
             else if (lowerInput.includes('технологии') || lowerInput.includes('tech') || lowerInput.includes('гаджеты')) key = 'tech';
             else if (lowerInput.includes('экология') || lowerInput.includes('environment') || lowerInput.includes('природа')) key = 'environment';
             else if (lowerInput.includes('образование') || lowerInput.includes('education') || lowerInput.includes('учеба')) key = 'education';
+            else if (lowerInput.includes('математика') || lowerInput.includes('math') || lowerInput.match(/[0-9+\-*/^()]/)) key = 'math';
+            else if (lowerInput.includes('новости') || lowerInput.includes('news')) key = 'news';
+            else if (lowerInput.includes('игры') || lowerInput.includes('games') || lowerInput.includes('игра')) key = 'games';
+            else if (lowerInput.includes('искусство') || lowerInput.includes('art') || lowerInput.includes('художник')) key = 'art';
 
+            // Обработка математических задач
+            if (key === 'math' || lowerInput.match(/[0-9+\-*/^()]/)) {
+                try {
+                    const result = math.evaluate(userInput);
+                    return `Ответ на вашу задачу: ${result}`;
+                } catch (error) {
+                    return "Не удалось решить задачу. Проверьте правильность выражения!";
+                }
+            }
+
+            // Ответ из локальной базы
             if (key !== 'default') {
                 return botResponses[key][Math.floor(Math.random() * botResponses[key].length)];
-            } else {
-                // Интеграция с интернетом: поиск в Wikipedia для фактических вопросов
-                try {
-                    const response = await fetch(`https://ru.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(userInput)}&origin=*`);
-                    const data = await response.json();
-                    if (data.query.search.length > 0) {
-                        const firstResult = data.query.search[0];
-                        return `Вот что я нашел по запросу "${userInput}": ${firstResult.snippet}... Подробнее: https://ru.wikipedia.org/wiki/${encodeURIComponent(firstResult.title)}`;
-                    } else {
-                        return botResponses.default[Math.floor(Math.random() * botResponses.default.length)];
-                    }
-                } catch (error) {
-                    console.error('Ошибка API:', error);
-                    return "Извините, не смог найти информацию в интернете. Давайте поговорим о чем-то другом!";
+            }
+
+            // Поиск в интернете через Wikipedia API
+            try {
+                const response = await fetch(`https://ru.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(userInput)}&origin=*`);
+                const data = await response.json();
+                if (data.query.search.length > 0) {
+                    const firstResult = data.query.search[0];
+                    return `Вот что я нашел по запросу "${userInput}": ${firstResult.snippet.replace(/<[^>]+>/g, '')}... Подробнее: https://ru.wikipedia.org/wiki/${encodeURIComponent(firstResult.title)}`;
+                } else {
+                    return botResponses.default[Math.floor(Math.random() * botResponses.default.length)];
                 }
+            } catch (error) {
+                console.error('Ошибка API:', error);
+                return "Не смог найти информацию. Давай попробуем другой вопрос?";
             }
         }
 
@@ -251,20 +321,26 @@
             if (!userInput) return;
             addMessage(userInput, true);
             inputField.value = '';
+            suggestionsDiv.innerHTML = '';
             const typing = showTyping();
+            const delay = userInput.match(/[0-9+\-*/^()]/) ? 1000 : 1500; // Меньше задержка для математики
             setTimeout(async () => {
                 chatMessages.removeChild(typing);
                 const response = await getBotResponse(userInput);
                 addMessage(response, false);
-            }, 1500); // Имитация思考
+            }, delay);
         });
 
         inputField.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendButton.click();
         });
 
+        inputField.addEventListener('input', () => {
+            updateSuggestions(inputField.value);
+        });
+
         // Начальное сообщение
-        addMessage("Привет! Я SmartChatBot. Я могу отвечать на вопросы, шутить и даже искать информацию в интернете (через Wikipedia API). Давайте поговорим?", false);
+        addMessage("Привет! Я SmartAIChat. Могу отвечать на вопросы, решать математические задачи и искать информацию в интернете. Задай мне что-нибудь!", false);
     </script>
 </body>
 </html>
