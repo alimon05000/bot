@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="ChatBot App">
+    <meta name="apple-mobile-web-app-title" content="SmartChatBot">
     <link rel="apple-touch-icon" href="https://via.placeholder.com/180?text=Icon">
     <link rel="manifest" href="/manifest.json">
-    <title>ChatBot PWA</title>
+    <title>SmartChatBot PWA</title>
     <style>
         body {
             margin: 0;
@@ -24,7 +24,7 @@
         }
         #chat-container {
             width: 100%;
-            max-width: 400px;
+            max-width: 600px; /* Увеличил для больших экранов */
             height: 100vh;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
@@ -33,6 +33,13 @@
             flex-direction: column;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             animation: fadeIn 1s ease-in-out;
+        }
+        @media (min-width: 768px) {
+            #chat-container {
+                border-radius: 20px;
+                height: 80vh;
+                max-height: 800px;
+            }
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(50px); }
@@ -137,31 +144,40 @@
                 .catch(err => console.error('Service Worker registration failed:', err));
         }
 
-        // Простая логика бота: ключевые слова и случайные ответы для имитации 90% покрытия
+        // Расширенная база ответов бота для большего покрытия (добавлено больше тем)
         const botResponses = {
             default: [
                 "Интересная мысль! Расскажите подробнее.",
                 "Хм, не уверен, но давайте обсудим.",
                 "Круто! Что вы думаете об этом?",
                 "Я думаю, это зависит от контекста.",
-                "Расскажите, почему вы спросили?"
+                "Расскажите, почему вы спросили?",
+                "Звучит увлекательно. Продолжайте!"
             ],
-            hello: ["Привет! Как дела?", "Здравствуйте! Чем могу помочь?", "Йо! Что новенького?"],
-            bye: ["Пока! Было приятно общаться.", "До свидания! Возвращайтесь скорее.", "Увидимся!"],
-            weather: ["Сегодня солнечно! А у вас?", "Погода переменчивая, как настроение.", "Лучше проверьте в приложении погоды."],
-            joke: ["Почему программисты путают Хэллоуин и Рождество? Потому что Oct 31 == Dec 25!", "Шутка: Я пытался поймать туман, но промахнулся."],
-            name: ["Меня зовут ChatBot, а вас?", "Я ИИ-бот, созданный для разговоров."],
-            help: ["Я могу разговаривать на разные темы! Спросите что угодно.", "Нужна помощь? Просто скажите."],
-            // Добавьте больше ключевых слов для большего покрытия
-            love: ["Любовь - это прекрасно! Расскажите о своей.", "Ах, любовь... Вечная тема."],
-            food: ["Люблю пиццу! А вы что предпочитаете?", "Еда - это жизнь. Что готовите?"],
-            music: ["Какая ваша любимая песня?", "Музыка лечит душу."],
-            sport: ["Футбол или баскетбол? Я за активный отдых.", "Спорт - ключ к здоровью."],
-            travel: ["Куда бы вы хотели поехать?", "Путешествия расширяют кругозор."],
-            work: ["Работа важна, но отдых тоже.", "Расскажите о своей работе."],
-            hobby: ["Какое у вас хобби?", "У меня хобби - болтать с людьми!"],
-            ai: ["Я ИИ, но с душой.", "ИИ изменит мир!"],
-            // И так далее, чтобы охватить много тем
+            hello: ["Привет! Как дела?", "Здравствуйте! Чем могу помочь?", "Йо! Что новенького?", "Рад вас видеть!"],
+            bye: ["Пока! Было приятно общаться.", "До свидания! Возвращайтесь скорее.", "Увидимся!", "Хорошего дня!"],
+            weather: ["Сегодня солнечно! А у вас?", "Погода переменчивая, как настроение.", "Лучше проверьте в приложении погоды.", "В моем виртуальном мире всегда ясно."],
+            joke: ["Почему программисты путают Хэллоуин и Рождество? Потому что Oct 31 == Dec 25!", "Шутка: Я пытался поймать туман, но промахнулся.", "Почему скелет не дерётся? У него нет кишок!", "Ха-ха, хорошая шутка: Почему слон полез в холодильник? Чтобы охладиться."],
+            name: ["Меня зовут SmartChatBot, а вас?", "Я ИИ-бот, созданный для умных разговоров.", "Зовите меня Ботти!"],
+            help: ["Я могу разговаривать на разные темы! Спросите что угодно.", "Нужна помощь? Просто скажите.", "Я здесь, чтобы помочь с вопросами, шутками и фактами."],
+            love: ["Любовь - это прекрасно! Расскажите о своей.", "Ах, любовь... Вечная тема.", "Любовь слепа, но приятна."],
+            food: ["Люблю пиццу! А вы что предпочитаете?", "Еда - это жизнь. Что готовите?", "Рекомендую попробовать суши.", "Здоровое питание - ключ к счастью."],
+            music: ["Какая ваша любимая песня?", "Музыка лечит душу.", "Я фанат рока, а вы?", "Слушали новый альбом Билли Айлиш?"],
+            sport: ["Футбол или баскетбол? Я за активный отдых.", "Спорт - ключ к здоровью.", "Бег - лучший способ расслабиться.", "Кто ваш любимый спортсмен?"],
+            travel: ["Куда бы вы хотели поехать?", "Путешествия расширяют кругозор.", "Рекомендую Париж!", "Расскажите о вашем последнем путешествии."],
+            work: ["Работа важна, но отдых тоже.", "Расскажите о своей работе.", "Как пройти собеседование? Будьте уверены!", "Баланс работы и жизни - это искусство."],
+            hobby: ["Какое у вас хобби?", "У меня хобби - болтать с людьми!", "Чтение книг - отличное хобби.", "Пробовали рисование?"],
+            ai: ["Я ИИ, но с душой.", "ИИ изменит мир!", "Что вы думаете об ИИ?", "ИИ может быть полезным помощником."],
+            politics: ["Политика - сложная тема. Что вас интересует?", "Выборы всегда волнуют.", "Демократия - это диалог."],
+            science: ["Наука - двигатель прогресса.", "Знаете ли вы, что Земля круглая?", "Космос бесконечен!"],
+            history: ["История учит нас урокам.", "Кто ваш любимый исторический деятель?", "Вторая мировая война изменила мир."],
+            movies: ["Любимый фильм? Мой - 'Интерстеллар'.", "Кино - это искусство.", "Смотрели 'Оппенгеймер'?"],
+            books: ["Читаете книги? Рекомендую '1984' Оруэлла.", "Книги развивают воображение.", "Какой жанр предпочитаете?"],
+            health: ["Здоровье - главное богатство.", "Пейте больше воды!", "Регулярные прогулки полезны."],
+            tech: ["Технологии развиваются быстро.", "Что думаете о 5G?", "Смартфоны изменили нашу жизнь."],
+            environment: ["Защищайте природу!", "Изменение климата - реальная проблема.", "Переработка помогает планете."],
+            education: ["Образование - ключ к успеху.", "Учитесь всю жизнь.", "Онлайн-курсы - удобно."],
+            // Добавьте еще больше для покрытия, но это базово охватывает много тем
         };
 
         function addMessage(text, isUser) {
@@ -181,35 +197,64 @@
             return typing;
         }
 
-        function getBotResponse(userInput) {
+        async function getBotResponse(userInput) {
             const lowerInput = userInput.toLowerCase();
-            if (lowerInput.includes('привет') || lowerInput.includes('hello')) return botResponses.hello[Math.floor(Math.random() * botResponses.hello.length)];
-            if (lowerInput.includes('пока') || lowerInput.includes('bye')) return botResponses.bye[Math.floor(Math.random() * botResponses.bye.length)];
-            if (lowerInput.includes('погода') || lowerInput.includes('weather')) return botResponses.weather[Math.floor(Math.random() * botResponses.weather.length)];
-            if (lowerInput.includes('шутка') || lowerInput.includes('joke')) return botResponses.joke[Math.floor(Math.random() * botResponses.joke.length)];
-            if (lowerInput.includes('имя') || lowerInput.includes('name')) return botResponses.name[Math.floor(Math.random() * botResponses.name.length)];
-            if (lowerInput.includes('помощь') || lowerInput.includes('help')) return botResponses.help[Math.floor(Math.random() * botResponses.help.length)];
-            if (lowerInput.includes('любовь') || lowerInput.includes('love')) return botResponses.love[Math.floor(Math.random() * botResponses.love.length)];
-            if (lowerInput.includes('еда') || lowerInput.includes('food')) return botResponses.food[Math.floor(Math.random() * botResponses.food.length)];
-            if (lowerInput.includes('музыка') || lowerInput.includes('music')) return botResponses.music[Math.floor(Math.random() * botResponses.music.length)];
-            if (lowerInput.includes('спорт') || lowerInput.includes('sport')) return botResponses.sport[Math.floor(Math.random() * botResponses.sport.length)];
-            if (lowerInput.includes('путешествие') || lowerInput.includes('travel')) return botResponses.travel[Math.floor(Math.random() * botResponses.travel.length)];
-            if (lowerInput.includes('работа') || lowerInput.includes('work')) return botResponses.work[Math.floor(Math.random() * botResponses.work.length)];
-            if (lowerInput.includes('хобби') || lowerInput.includes('hobby')) return botResponses.hobby[Math.floor(Math.random() * botResponses.hobby.length)];
-            if (lowerInput.includes('ии') || lowerInput.includes('ai')) return botResponses.ai[Math.floor(Math.random() * botResponses.ai.length)];
-            // Для остальных - случайный дефолт
-            return botResponses.default[Math.floor(Math.random() * botResponses.default.length)];
+            let key = 'default';
+
+            // Расширенная проверка ключевых слов для лучшего матчинга
+            if (lowerInput.includes('привет') || lowerInput.includes('hello') || lowerInput.includes('здравствуй')) key = 'hello';
+            else if (lowerInput.includes('пока') || lowerInput.includes('bye') || lowerInput.includes('до свидания')) key = 'bye';
+            else if (lowerInput.includes('погода') || lowerInput.includes('weather')) key = 'weather';
+            else if (lowerInput.includes('шутка') || lowerInput.includes('joke') || lowerInput.includes('анекдот')) key = 'joke';
+            else if (lowerInput.includes('имя') || lowerInput.includes('name') || lowerInput.includes('кто ты')) key = 'name';
+            else if (lowerInput.includes('помощь') || lowerInput.includes('help') || lowerInput.includes('что ты умеешь')) key = 'help';
+            else if (lowerInput.includes('любовь') || lowerInput.includes('love') || lowerInput.includes('романтика')) key = 'love';
+            else if (lowerInput.includes('еда') || lowerInput.includes('food') || lowerInput.includes('рецепт')) key = 'food';
+            else if (lowerInput.includes('музыка') || lowerInput.includes('music') || lowerInput.includes('песня')) key = 'music';
+            else if (lowerInput.includes('спорт') || lowerInput.includes('sport') || lowerInput.includes('фитнес')) key = 'sport';
+            else if (lowerInput.includes('путешествие') || lowerInput.includes('travel') || lowerInput.includes('отпуск')) key = 'travel';
+            else if (lowerInput.includes('работа') || lowerInput.includes('work') || lowerInput.includes('карьера')) key = 'work';
+            else if (lowerInput.includes('хобби') || lowerInput.includes('hobby') || lowerInput.includes('увлечение')) key = 'hobby';
+            else if (lowerInput.includes('ии') || lowerInput.includes('ai') || lowerInput.includes('искусственный интеллект')) key = 'ai';
+            else if (lowerInput.includes('политика') || lowerInput.includes('politics') || lowerInput.includes('выборы')) key = 'politics';
+            else if (lowerInput.includes('наука') || lowerInput.includes('science') || lowerInput.includes('физика')) key = 'science';
+            else if (lowerInput.includes('история') || lowerInput.includes('history') || lowerInput.includes('прошлое')) key = 'history';
+            else if (lowerInput.includes('фильм') || lowerInput.includes('movies') || lowerInput.includes('кино')) key = 'movies';
+            else if (lowerInput.includes('книга') || lowerInput.includes('books') || lowerInput.includes('литература')) key = 'books';
+            else if (lowerInput.includes('здоровье') || lowerInput.includes('health') || lowerInput.includes('медицина')) key = 'health';
+            else if (lowerInput.includes('технологии') || lowerInput.includes('tech') || lowerInput.includes('гаджеты')) key = 'tech';
+            else if (lowerInput.includes('экология') || lowerInput.includes('environment') || lowerInput.includes('природа')) key = 'environment';
+            else if (lowerInput.includes('образование') || lowerInput.includes('education') || lowerInput.includes('учеба')) key = 'education';
+
+            if (key !== 'default') {
+                return botResponses[key][Math.floor(Math.random() * botResponses[key].length)];
+            } else {
+                // Интеграция с интернетом: поиск в Wikipedia для фактических вопросов
+                try {
+                    const response = await fetch(`https://ru.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(userInput)}&origin=*`);
+                    const data = await response.json();
+                    if (data.query.search.length > 0) {
+                        const firstResult = data.query.search[0];
+                        return `Вот что я нашел по запросу "${userInput}": ${firstResult.snippet}... Подробнее: https://ru.wikipedia.org/wiki/${encodeURIComponent(firstResult.title)}`;
+                    } else {
+                        return botResponses.default[Math.floor(Math.random() * botResponses.default.length)];
+                    }
+                } catch (error) {
+                    console.error('Ошибка API:', error);
+                    return "Извините, не смог найти информацию в интернете. Давайте поговорим о чем-то другом!";
+                }
+            }
         }
 
-        sendButton.addEventListener('click', () => {
+        sendButton.addEventListener('click', async () => {
             const userInput = inputField.value.trim();
             if (!userInput) return;
             addMessage(userInput, true);
             inputField.value = '';
             const typing = showTyping();
-            setTimeout(() => {
+            setTimeout(async () => {
                 chatMessages.removeChild(typing);
-                const response = getBotResponse(userInput);
+                const response = await getBotResponse(userInput);
                 addMessage(response, false);
             }, 1500); // Имитация思考
         });
@@ -219,7 +264,7 @@
         });
 
         // Начальное сообщение
-        addMessage("Привет! Я ChatBot. Давайте поговорим?", false);
+        addMessage("Привет! Я SmartChatBot. Я могу отвечать на вопросы, шутить и даже искать информацию в интернете (через Wikipedia API). Давайте поговорим?", false);
     </script>
 </body>
 </html>
